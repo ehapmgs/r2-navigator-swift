@@ -27,7 +27,8 @@ public class UserSettings {
     private var fontFamily = 0
     private var appearance = 0
     private var verticalScroll = false
-    
+    private var hyphens = false
+
     private var publisherDefaults = false
     private var textAlignment = 0
     private var columnCount = 0
@@ -44,6 +45,12 @@ public class UserSettings {
         
         /// Load settings from UserDefaults
         
+        // hyphens
+        if isKeyPresentInUserDefaults(key: ReadiumCSSName.hyphens) {
+            hyphens = userDefaults.bool(forKey: ReadiumCSSName.hyphens.rawValue)
+        } else {
+            hyphens = false
+        }
         // Font size
         if isKeyPresentInUserDefaults(key: ReadiumCSSName.fontSize) {
             fontSize = userDefaults.float(forKey: ReadiumCSSName.fontSize.rawValue)
@@ -136,6 +143,13 @@ public class UserSettings {
     
     // Build and add CSS properties
     private func buildCssProperties() {
+        
+        // Hyphens
+        userProperties.addSwitchable(onValue: "auto",
+                                     offValue: "none",
+                                     on: hyphens,
+                                     reference: ReadiumCSSReference.hyphens.rawValue,
+                                     name: ReadiumCSSName.hyphens.rawValue)
         
         // Font size
         userProperties.addIncrementable(nValue: fontSize,
