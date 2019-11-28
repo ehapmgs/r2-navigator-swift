@@ -16,9 +16,9 @@ import SafariServices
 
 
 public protocol EPUBNavigatorDelegate: VisualNavigatorDelegate {
-    
+
     // MARK: - Deprecated
-    
+
     // Implement `NavigatorDelegate.navigator(didTapAt:)` instead.
     func middleTapHandler()
 
@@ -33,7 +33,7 @@ public protocol EPUBNavigatorDelegate: VisualNavigatorDelegate {
 }
 
 public extension EPUBNavigatorDelegate {
-    
+
     func middleTapHandler() {}
     func willExitPublication(documentIndex: Int, progression: Double?) {}
     func didChangedDocumentPage(currentDocumentIndex: Int) {}
@@ -46,31 +46,31 @@ public extension EPUBNavigatorDelegate {
 public typealias EPUBContentInsets = (top: CGFloat, bottom: CGFloat)
 
 open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Loggable {
-    
+
     public struct Configuration {
         /// Authorized actions to be displayed in the selection menu.
         public var editingActions: [EditingAction] = EditingAction.defaultActions
-        
+
         /// Content insets used to add some vertical margins around reflowable EPUB publications. The insets can be configured for each size class to allow smaller margins on compact screens.
         public var contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets] = [
             .compact: (top: 20, bottom: 20),
             .regular: (top: 44, bottom: 44)
         ]
-        
+
         /// Number of positions (as in `Publication.positionList`) to preload before the current page.
         public var preloadPreviousPositionCount = 2
-        
+
         /// Number of positions (as in `Publication.positionList`) to preload after the current page.
         public var preloadNextPositionCount = 6
-        
+
         public init() {}
     }
-    
+
     public weak var delegate: EPUBNavigatorDelegate? {
         didSet { notifyCurrentLocation() }
     }
     public var userSettings: UserSettings
-    
+
     private let config: Configuration
     private let publication: Publication
     private let license: DRMLicense?
@@ -110,7 +110,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         }()
 
         super.init(nibName: nil, bundle: nil)
-        
+
         self.editingActions.delegate = self
         self.paginationView.delegate = self
         reloadSpreads(at: initialLocation)
@@ -132,17 +132,17 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
 
     open override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        
+
         // FIXME: Deprecated, to be removed at some point.
         if let currentResourceIndex = currentResourceIndex {
             let progression = currentLocation?.locations.progression
             delegate?.willExitPublication(documentIndex: currentResourceIndex, progression: progression)
         }
     }
-    
+
     open override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
-        
+
         coordinator.animate(alongsideTransition: { [weak self] context in
             self?.reloadSpreads()
         })
@@ -152,7 +152,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
     private lazy var tableOfContentsTitleByHref: [String: String] = {
         func fulfill(linkList: [Link]) -> [String: String] {
             var result = [String: String]()
-            
+
             for link in linkList {
                 if let title = link.title {
                     result[link.href] = title
@@ -164,7 +164,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
             }
             return result
         }
-        
+
         return fulfill(linkList: publication.tableOfContents)
     }()
 
@@ -177,7 +177,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         }
         return paginationView.goToIndex(spreadIndex, location: location, animated: animated, completion: completion)
     }
-    
+
     /// Goes to the next or previous page in the given scroll direction.
     private func go(to direction: EPUBSpreadView.Direction, animated: Bool, completion: @escaping () -> Void) -> Bool {
         if let spreadView = paginationView.currentView as? EPUBSpreadView,
@@ -185,7 +185,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         {
             return true
         }
-        
+
         let delta = readingProgression == .rtl ? -1 : 1
         switch direction {
         case .left:
@@ -194,33 +194,33 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
             return paginationView.goToIndex(currentSpreadIndex + delta, animated: animated, completion: completion)
         }
     }
-    
-    
+
+
     // MARK: - User settings
-    
+
     public func updateUserSettingStyle() {
         assert(Thread.isMainThread, "User settings must be updated from the main thread")
-        
+
         guard !paginationView.isEmpty else {
             return
         }
-        
+
         reloadSpreads()
-        
+
         let location = currentLocation
         for (_, view) in paginationView.loadedViews {
             (view as? EPUBSpreadView)?.applyUserSettingsStyle()
         }
-        
+
         // Re-positions the navigator to the location before applying the settings
         if let location = location {
             go(to: location)
         }
     }
 
-    
+
     // MARK: - Pagination and spreads
-    
+
     private let paginationView: PaginationView
     private var spreads: [EPUBSpread] = []
 
@@ -244,7 +244,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
 
         let location = location ?? currentLocation
         spreads = EPUBSpread.makeSpreads(for: publication, readingProgression: readingProgression, pageCountPerSpread: pageCountPerSpread)
-        
+
         let initialIndex: Int = {
             if let href = location?.href, let foundIndex = spreads.firstIndex(withHref: href) {
                 return foundIndex
@@ -252,13 +252,13 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
                 return 0
             }
         }()
-        
+
         paginationView.reloadAtIndex(initialIndex, location: location, pageCount: spreads.count, readingProgression: readingProgression)
     }
 
-    
+
     // MARK: - Navigator
-    
+
     public var currentLocation: Locator? {
         guard let spreadView = paginationView.currentView as? EPUBSpreadView,
             let href = Optional(spreadView.spread.leading.href),
@@ -270,7 +270,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
 
         // Gets the current locator from the positionList, and fill its missing data.
         let progression = spreadView.progression(in: href)
-        let positionIndex = Int(progression * Double(positionList.count - 1))
+        let positionIndex = Int(ceil(progression * Double(positionList.count - 1)))
         var locator = positionList[positionIndex]
         locator.title = tableOfContentsTitleByHref[href]
         locator.locations.progression = progression
@@ -280,7 +280,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
     /// Last current location notified to the delegate.
     /// Used to avoid sending twice the same location.
     private var notifiedCurrentLocation: Locator?
-    
+
     fileprivate func notifyCurrentLocation() {
         guard let delegate = delegate,
             let location = currentLocation,
@@ -291,18 +291,18 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         notifiedCurrentLocation = location
         delegate.navigator(self, locationDidChange: location)
     }
-    
+
     public func go(to locator: Locator, animated: Bool, completion: @escaping () -> Void) -> Bool {
         guard let spreadIndex = spreads.firstIndex(withHref: locator.href) else {
             return false
         }
         return paginationView.goToIndex(spreadIndex, location: locator, animated: animated, completion: completion)
     }
-    
+
     public func go(to link: Link, animated: Bool, completion: @escaping () -> Void) -> Bool {
         return go(to: Locator(link: link), animated: animated, completion: completion)
     }
-    
+
     public func goForward(animated: Bool, completion: @escaping () -> Void) -> Bool {
         let direction: EPUBSpreadView.Direction = {
             switch readingProgression {
@@ -314,7 +314,7 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         }()
         return go(to: direction, animated: animated, completion: completion)
     }
-    
+
     public func goBackward(animated: Bool, completion: @escaping () -> Void) -> Bool {
         let direction: EPUBSpreadView.Direction = {
             switch readingProgression {
@@ -326,25 +326,25 @@ open class EPUBNavigatorViewController: UIViewController, VisualNavigator, Logga
         }()
         return go(to: direction, animated: animated, completion: completion)
     }
-    
+
 }
 
 extension EPUBNavigatorViewController: EPUBSpreadViewDelegate {
-    
+
     func spreadViewWillAnimate(_ spreadView: EPUBSpreadView) {
         paginationView.isUserInteractionEnabled = false
     }
-    
+
     func spreadViewDidAnimate(_ spreadView: EPUBSpreadView) {
         paginationView.isUserInteractionEnabled = true
     }
-    
+
     func spreadView(_ spreadView: EPUBSpreadView, didTapAt point: CGPoint) {
         let point = view.convert(point, from: spreadView)
         delegate?.navigator(self, didTapAt: point)
         // FIXME: Deprecated, to be removed at some point.
         delegate?.middleTapHandler()
-        
+
         // Uncomment to debug the coordinates of the tap point.
 //        let tapView = UIView(frame: .init(x: 0, y: 0, width: 50, height: 50))
 //        view.addSubview(tapView)
@@ -358,21 +358,21 @@ extension EPUBNavigatorViewController: EPUBSpreadViewDelegate {
 //            tapView.removeFromSuperview()
 //        }
     }
-    
+
     func spreadView(_ spreadView: EPUBSpreadView, didTapOnExternalURL url: URL) {
         delegate?.navigator(self, presentExternalURL: url)
     }
-    
+
     func spreadView(_ spreadView: EPUBSpreadView, didTapOnInternalLink href: String) {
         go(to: Link(href: href))
     }
-    
+
     func spreadViewPagesDidChange(_ spreadView: EPUBSpreadView) {
         if paginationView.currentView == spreadView {
             notifyCurrentLocation()
         }
     }
-    
+
     func spreadView(_ spreadView: EPUBSpreadView, present viewController: UIViewController) {
         present(viewController, animated: true)
     }
@@ -380,17 +380,17 @@ extension EPUBNavigatorViewController: EPUBSpreadViewDelegate {
 }
 
 extension EPUBNavigatorViewController: EditingActionsControllerDelegate {
-    
+
     func editingActionsDidPreventCopy(_ editingActions: EditingActionsController) {
         delegate?.navigator(self, presentError: .copyForbidden)
         // FIXME: Deprecated, to be removed at some point.
         delegate?.presentError(.copyForbidden)
     }
-    
+
 }
 
 extension EPUBNavigatorViewController: PaginationViewDelegate {
-    
+
     func paginationView(_ paginationView: PaginationView, pageViewAtIndex index: Int, location: Locator) -> (UIView & PageView)? {
         let spread = spreads[index]
         let spreadViewType = (spread.layout == .fixed) ? EPUBFixedSpreadView.self : EPUBReflowableSpreadView.self
@@ -409,7 +409,7 @@ extension EPUBNavigatorViewController: PaginationViewDelegate {
         spreadView.delegate = self
         return spreadView
     }
-    
+
     func paginationViewDidUpdateViews(_ paginationView: PaginationView) {
         // notice that you should set the delegate before you load views
         // otherwise, when open the publication, you may miss the first invocation
@@ -420,7 +420,7 @@ extension EPUBNavigatorViewController: PaginationViewDelegate {
             delegate?.didChangedDocumentPage(currentDocumentIndex: currentResourceIndex)
         }
     }
-    
+
 }
 
 
@@ -436,7 +436,7 @@ public enum PageTransition {
 }
 
 extension EPUBNavigatorViewController {
-    
+
     /// This initializer is deprecated.
     /// Replace `pageTransition` by the `animated` property of the `goTo` functions.
     /// Replace `disableDragAndDrop` by `EditingAction.copy`, since drag and drop is equivalent to copy.
@@ -445,7 +445,7 @@ extension EPUBNavigatorViewController {
     public convenience init(for publication: Publication, license: DRMLicense? = nil, initialIndex: Int, initialProgression: Double?, pageTransition: PageTransition = .none, disableDragAndDrop: Bool = false, editingActions: [EditingAction] = EditingAction.defaultActions, contentInset: [UIUserInterfaceSizeClass: EPUBContentInsets]? = nil) {
         fatalError("This initializer is not available anymore.")
     }
-    
+
     /// This initializer is deprecated.
     /// Use the new Configuration object.
     @available(*, deprecated, renamed: "init(publication:license:initialLocation:resourcesServer:config:)")
@@ -463,7 +463,7 @@ extension EPUBNavigatorViewController {
         get { return .none }
         set {}
     }
-    
+
     @available(*, deprecated, message: "Bookmark model is deprecated, use your own model and `currentLocation`")
     public var currentPosition: Bookmark? {
         guard let publicationID = publication.metadata.identifier,
@@ -481,7 +481,7 @@ extension EPUBNavigatorViewController {
 
     @available(*, deprecated, message: "Use `publication.readingOrder` instead")
     public func getReadingOrder() -> [Link] { return publication.readingOrder }
-    
+
     @available(*, deprecated, message: "Use `publication.tableOfContents` instead")
     public func getTableOfContents() -> [Link] { return publication.tableOfContents }
 
@@ -489,19 +489,19 @@ extension EPUBNavigatorViewController {
     public func displayReadingOrderItem(at index: Int) {
         goToReadingOrderIndex(index)
     }
-    
+
     @available(*, deprecated, renamed: "go(to:)")
     public func displayReadingOrderItem(at index: Int, progression: Double) {
         var location = Locator(link: publication.readingOrder[index])
         location.locations = Locations(progression: progression)
         goToReadingOrderIndex(index, location: location)
     }
-    
+
     @available(*, deprecated, renamed: "go(to:)")
     public func displayReadingOrderItem(with href: String) -> Int? {
         let index = publication.readingOrder.firstIndex(withHref: href)
         let moved = go(to: Link(href: href))
         return moved ? index : nil
     }
-    
+
 }
